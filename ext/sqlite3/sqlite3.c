@@ -724,7 +724,7 @@ static int sqlite3_do_callback(struct php_sqlite3_fci *fc, zval *cb, int argc, s
 		if (Z_ISUNDEF(agg_context->zval_context)) {
 			ZVAL_NULL(&agg_context->zval_context);
 		}
-		ZVAL_DUP(&zargs[0], &agg_context->zval_context);
+		ZVAL_COPY(&zargs[0], &agg_context->zval_context);
 		ZVAL_LONG(&zargs[1], agg_context->row_count);
 	}
 
@@ -858,7 +858,7 @@ static void php_sqlite3_callback_final(sqlite3_context *context) /* {{{ */
 static int php_sqlite3_callback_compare(void *coll, int a_len, const void *a, int b_len, const void* b) /* {{{ */
 {
 	php_sqlite3_collation *collation = (php_sqlite3_collation*)coll;
-	zval *zargs = NULL;
+	zval zargs[2];
 	zval retval;
 	int ret;
 
@@ -868,7 +868,6 @@ static int php_sqlite3_callback_compare(void *coll, int a_len, const void *a, in
 	collation->fci.fci.retval = &retval;
 	collation->fci.fci.param_count = 2;
 
-	zargs = safe_emalloc(2, sizeof(zval), 0);
 	ZVAL_STRINGL(&zargs[0], a, a_len);
 	ZVAL_STRINGL(&zargs[1], b, b_len);
 
@@ -885,7 +884,6 @@ static int php_sqlite3_callback_compare(void *coll, int a_len, const void *a, in
 
 	zval_ptr_dtor(&zargs[0]);
 	zval_ptr_dtor(&zargs[1]);
-	efree(zargs);
 
 	if (EG(exception)) {
 		ret = 0;
@@ -1671,7 +1669,7 @@ PHP_METHOD(sqlite3stmt, execute)
 }
 /* }}} */
 
-/* {{{ proto int SQLite3Stmt::__construct(SQLite3 dbobject, String Statement)
+/* {{{ proto SQLite3Stmt::__construct(SQLite3 dbobject, String Statement)
    __constructor for SQLite3Stmt. */
 PHP_METHOD(sqlite3stmt, __construct)
 {
@@ -1893,7 +1891,7 @@ PHP_METHOD(sqlite3result, finalize)
 }
 /* }}} */
 
-/* {{{ proto int SQLite3Result::__construct()
+/* {{{ proto SQLite3Result::__construct()
    __constructor for SQLite3Result. */
 PHP_METHOD(sqlite3result, __construct)
 {

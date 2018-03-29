@@ -370,7 +370,7 @@ static PHP_FUNCTION(phpdbg_break_next)
 	phpdbg_set_breakpoint_opline_ex((phpdbg_opline_ptr_t) ex->opline + 1);
 } /* }}} */
 
-/* {{{ proto void phpdbg_break_file(string file, integer line) */
+/* {{{ proto void phpdbg_break_file(string file, int line) */
 static PHP_FUNCTION(phpdbg_break_file)
 {
 	char *file;
@@ -425,7 +425,7 @@ static PHP_FUNCTION(phpdbg_clear)
 	zend_hash_clean(&PHPDBG_G(bp)[PHPDBG_BREAK_COND]);
 } /* }}} */
 
-/* {{{ proto void phpdbg_color(integer element, string color) */
+/* {{{ proto void phpdbg_color(int element, string color) */
 static PHP_FUNCTION(phpdbg_color)
 {
 	zend_long element;
@@ -1324,7 +1324,7 @@ void phpdbg_free_wrapper(void *p ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC) /* {{
 {
 	zend_mm_heap *heap = zend_mm_get_heap();
 	if (UNEXPECTED(heap == p)) {
-		/* TODO: heap maybe allocated by mmap(zend_mm_init) or malloc(USE_ZEND_ALLOC=0) 
+		/* TODO: heap maybe allocated by mmap(zend_mm_init) or malloc(USE_ZEND_ALLOC=0)
 		 * let's prevent it from segfault for now
 		 */
 	} else {

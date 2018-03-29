@@ -193,7 +193,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_set_exception_handler, 0, 0, 1)
 	ZEND_ARG_INFO(0, exception_handler)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_get_defined_functions, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_get_defined_functions, 0, 0, 0)
 	ZEND_ARG_INFO(0, exclude_disabled)
 ZEND_END_ARG_INFO()
 
@@ -361,7 +361,7 @@ ZEND_FUNCTION(gc_collect_cycles)
    Returns status of the circular reference collector */
 ZEND_FUNCTION(gc_enabled)
 {
-	RETURN_BOOL(GC_G(gc_enabled));
+	RETURN_BOOL(gc_enabled());
 }
 /* }}} */
 
@@ -475,7 +475,7 @@ ZEND_FUNCTION(func_get_args)
 	if (arg_count) {
 		array_init_size(return_value, arg_count);
 		first_extra_arg = ex->func->op_array.num_args;
-		zend_hash_real_init(Z_ARRVAL_P(return_value), 1);
+		zend_hash_real_init_packed(Z_ARRVAL_P(return_value));
 		ZEND_HASH_FILL_PACKED(Z_ARRVAL_P(return_value)) {
 			i = 0;
 			p = ZEND_CALL_ARG(ex, 1);
@@ -484,7 +484,7 @@ ZEND_FUNCTION(func_get_args)
 					q = p;
 					if (EXPECTED(Z_TYPE_INFO_P(q) != IS_UNDEF)) {
 						ZVAL_DEREF(q);
-						if (Z_OPT_REFCOUNTED_P(q)) { 
+						if (Z_OPT_REFCOUNTED_P(q)) {
 							Z_ADDREF_P(q);
 						}
 					} else {
@@ -500,7 +500,7 @@ ZEND_FUNCTION(func_get_args)
 				q = p;
 				if (EXPECTED(Z_TYPE_INFO_P(q) != IS_UNDEF)) {
 					ZVAL_DEREF(q);
-					if (Z_OPT_REFCOUNTED_P(q)) { 
+					if (Z_OPT_REFCOUNTED_P(q)) {
 						Z_ADDREF_P(q);
 					}
 				} else {
@@ -644,7 +644,7 @@ ZEND_FUNCTION(each)
 		break;
 	}
 	array_init_size(return_value, 4);
-	zend_hash_real_init(Z_ARRVAL_P(return_value), 0);
+	zend_hash_real_init_mixed(Z_ARRVAL_P(return_value));
 
 	/* add value elements */
 	ZVAL_DEREF(entry);
@@ -778,7 +778,7 @@ static void copy_constant_array(zval *dst, zval *src) /* {{{ */
 }
 /* }}} */
 
-/* {{{ proto bool define(string constant_name, mixed value[, boolean case_insensitive])
+/* {{{ proto bool define(string constant_name, mixed value[, bool case_insensitive])
    Define a new constant */
 ZEND_FUNCTION(define)
 {
@@ -1273,7 +1273,7 @@ ZEND_FUNCTION(method_exists)
 		Z_PARAM_ZVAL(klass)
 		Z_PARAM_STR(method_name)
 	ZEND_PARSE_PARAMETERS_END();
-	
+
 	if (Z_TYPE_P(klass) == IS_OBJECT) {
 		ce = Z_OBJCE_P(klass);
 	} else if (Z_TYPE_P(klass) == IS_STRING) {
@@ -2121,7 +2121,7 @@ static void debug_backtrace_get_args(zend_execute_data *call, zval *arg_array) /
 		zval *p = ZEND_CALL_ARG(call, 1);
 
 		array_init_size(arg_array, num_args);
-		zend_hash_real_init(Z_ARRVAL_P(arg_array), 1);
+		zend_hash_real_init_packed(Z_ARRVAL_P(arg_array));
 		ZEND_HASH_FILL_PACKED(Z_ARRVAL_P(arg_array)) {
 			if (call->func->type == ZEND_USER_FUNCTION) {
 				uint32_t first_extra_arg = MIN(num_args, call->func->op_array.num_args);

@@ -57,11 +57,19 @@ static void zend_ini_do_op(char type, zval *result, zval *op1, zval *op2)
 	int str_len;
 	char str_result[MAX_LENGTH_OF_LONG+1];
 
-	i_op1 = atoi(Z_STRVAL_P(op1));
-	zend_string_free(Z_STR_P(op1));
+	if (IS_LONG == Z_TYPE_P(op1)) {
+		i_op1 = Z_LVAL_P(op1);
+	} else {
+		i_op1 = atoi(Z_STRVAL_P(op1));
+		zend_string_free(Z_STR_P(op1));
+	}
 	if (op2) {
-		i_op2 = atoi(Z_STRVAL_P(op2));
-		zend_string_free(Z_STR_P(op2));
+		if (IS_LONG == Z_TYPE_P(op2)) {
+			i_op2 = Z_LVAL_P(op2);
+		} else {
+			i_op2 = atoi(Z_STRVAL_P(op2));
+			zend_string_free(Z_STR_P(op2));
+		}
 	} else {
 		i_op2 = 0;
 	}
@@ -143,7 +151,7 @@ static void zend_ini_get_constant(zval *result, zval *name)
 	if (!memchr(Z_STRVAL_P(name), ':', Z_STRLEN_P(name))
 		   	&& (c = zend_get_constant(Z_STR_P(name))) != 0) {
 		if (Z_TYPE_P(c) != IS_STRING) {
-			ZVAL_DUP(&tmp, c);
+			ZVAL_COPY_OR_DUP(&tmp, c);
 			if (Z_OPT_CONSTANT(tmp)) {
 				zval_update_constant_ex(&tmp, NULL);
 			}

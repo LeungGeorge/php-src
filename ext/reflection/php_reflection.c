@@ -1563,7 +1563,7 @@ ZEND_METHOD(reflection_function, __construct)
 	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS(), "O", &closure, zend_ce_closure) == SUCCESS) {
 		fptr = (zend_function*)zend_get_closure_method_def(closure);
 		Z_ADDREF_P(closure);
-	} else { 
+	} else {
 		if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "s", &name_str, &name_len) == FAILURE) {
 			return;
 		}
@@ -2218,7 +2218,7 @@ ZEND_METHOD(reflection_generator, getFunction)
 
 	if (ex->func->common.fn_flags & ZEND_ACC_CLOSURE) {
 		zval closure;
-		ZVAL_OBJ(&closure, (zend_object *) ex->func->common.prototype);
+		ZVAL_OBJ(&closure, ZEND_CLOSURE_OBJECT(ex->func));
 		reflection_function_factory(ex->func, &closure, return_value);
 	} else if (ex->func->op_array.scope) {
 		reflection_method_factory(ex->func->op_array.scope, ex->func, NULL, return_value);
@@ -2914,17 +2914,9 @@ ZEND_METHOD(reflection_type, isBuiltin)
 static zend_string *reflection_type_name(type_reference *param) {
 	if (ZEND_TYPE_IS_CLASS(param->arg_info->type)) {
 		return zend_string_copy(ZEND_TYPE_NAME(param->arg_info->type));
-	}
-	switch (ZEND_TYPE_CODE(param->arg_info->type)) {
-		/* keep this for BC, bool vs boolean, int vs integer */
-		case _IS_BOOL:    return zend_string_init("bool", sizeof("bool") - 1, 0);
-		case IS_LONG:     return zend_string_init("int", sizeof("int") - 1, 0);
-		/* use zend API for other types */
-		default:
-			{
-			char *name = zend_get_type_by_const(ZEND_TYPE_CODE(param->arg_info->type));
-			return zend_string_init(name, strlen(name), 0);
-			}
+	} else {
+		char *name = zend_get_type_by_const(ZEND_TYPE_CODE(param->arg_info->type));
+		return zend_string_init(name, strlen(name), 0);
 	}
 }
 /* }}} */
@@ -2940,7 +2932,7 @@ ZEND_METHOD(reflection_type, __toString)
 		return;
 	}
 	GET_REFLECTION_OBJECT_PTR(param);
-	
+
 	RETURN_STR(reflection_type_name(param));
 }
 /* }}} */
@@ -2951,12 +2943,12 @@ ZEND_METHOD(reflection_named_type, getName)
 {
 	reflection_object *intern;
 	type_reference *param;
-	
+
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	GET_REFLECTION_OBJECT_PTR(param);
-	
+
 	RETURN_STR(reflection_type_name(param));
 }
 /* }}} */
@@ -4336,7 +4328,6 @@ ZEND_METHOD(reflection_class, getProperty)
 		}
 	}
 	str_name = ZSTR_VAL(name);
-	str_name_len = ZSTR_LEN(name);
 	if ((tmp = strstr(ZSTR_VAL(name), "::")) != NULL) {
 		classname_len = tmp - ZSTR_VAL(name);
 		classname = zend_string_alloc(classname_len, 0);
@@ -5000,7 +4991,7 @@ ZEND_METHOD(reflection_class, getTraitNames)
 }
 /* }}} */
 
-/* {{{ proto public arra ReflectionClass::getTraitaliases()
+/* {{{ proto public array ReflectionClass::getTraitAliases()
    Returns an array of trait aliases */
 ZEND_METHOD(reflection_class, getTraitAliases)
 {
@@ -6703,7 +6694,7 @@ static const zend_function_entry reflection_ext_functions[] = { /* {{{ */
 	PHP_FE_END
 }; /* }}} */
 
-static zend_object_handlers *zend_std_obj_handlers;
+static const zend_object_handlers *zend_std_obj_handlers;
 
 /* {{{ _reflection_write_property */
 static void _reflection_write_property(zval *object, zval *member, zval *value, void **cache_slot)
@@ -6770,7 +6761,7 @@ PHP_MINIT_FUNCTION(reflection) /* {{{ */
 	INIT_CLASS_ENTRY(_reflection_entry, "ReflectionType", reflection_type_functions);
 	_reflection_entry.create_object = reflection_objects_new;
 	reflection_type_ptr = zend_register_internal_class(&_reflection_entry);
-	
+
 	INIT_CLASS_ENTRY(_reflection_entry, "ReflectionNamedType", reflection_named_type_functions);
 	_reflection_entry.create_object = reflection_objects_new;
 	reflection_named_type_ptr = zend_register_internal_class_ex(&_reflection_entry, reflection_type_ptr);

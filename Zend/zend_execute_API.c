@@ -302,7 +302,7 @@ void shutdown_executor(void) /* {{{ */
 		zend_hash_graceful_reverse_destroy(&EG(symbol_table));
 
 #if ZEND_DEBUG
-		if (GC_G(gc_enabled) && !CG(unclean_shutdown)) {
+		if (gc_enabled() && !CG(unclean_shutdown)) {
 			gc_collect_cycles();
 		}
 #endif
@@ -776,8 +776,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /
 	if (UNEXPECTED(func->op_array.fn_flags & ZEND_ACC_CLOSURE)) {
 		uint32_t call_info;
 
-		ZEND_ASSERT(GC_TYPE((zend_object*)func->op_array.prototype) == IS_OBJECT);
-		GC_ADDREF((zend_object*)func->op_array.prototype);
+		GC_ADDREF(ZEND_CLOSURE_OBJECT(func));
 		call_info = ZEND_CALL_CLOSURE;
 		if (func->common.fn_flags & ZEND_ACC_FAKE_CLOSURE) {
 			call_info |= ZEND_CALL_FAKE_CLOSURE;
@@ -785,7 +784,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /
 		ZEND_ADD_CALL_FLAG(call, call_info);
 	}
 
-	if (func->type == ZEND_USER_FUNCTION) {		
+	if (func->type == ZEND_USER_FUNCTION) {
 		int call_via_handler = (func->common.fn_flags & ZEND_ACC_CALL_VIA_TRAMPOLINE) != 0;
 		const zend_op *current_opline_before_exception = EG(opline_before_exception);
 
@@ -1506,7 +1505,7 @@ ZEND_API zend_array *zend_rebuild_symbol_table(void) /* {{{ */
 		if (!ex->func->op_array.last_var) {
 			return symbol_table;
 		}
-		zend_hash_real_init(symbol_table, 0);
+		zend_hash_real_init_mixed(symbol_table);
 		/*printf("Cache miss!  Initialized %x\n", EG(active_symbol_table));*/
 	}
 	if (EXPECTED(ex->func->op_array.last_var)) {

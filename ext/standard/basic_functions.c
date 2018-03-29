@@ -360,7 +360,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_shuffle, 0)
 	ZEND_ARG_INFO(1, arg) /* ARRAY_INFO(1, arg, 0) */
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_array_push, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_array_push, 0, 0, 1)
 	ZEND_ARG_INFO(1, stack) /* ARRAY_INFO(1, stack, 0) */
 	ZEND_ARG_VARIADIC_INFO(0, vars)
 ZEND_END_ARG_INFO()
@@ -373,7 +373,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_array_shift, 0)
 	ZEND_ARG_INFO(1, stack) /* ARRAY_INFO(1, stack, 0) */
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_array_unshift, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_array_unshift, 0, 0, 1)
 	ZEND_ARG_INFO(1, stack) /* ARRAY_INFO(1, stack, 0) */
 	ZEND_ARG_VARIADIC_INFO(0, vars)
 ZEND_END_ARG_INFO()
@@ -633,7 +633,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_long2ip, 0)
 	ZEND_ARG_INFO(0, proper_address)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_getenv, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_getenv, 0, 0, 0)
 	ZEND_ARG_INFO(0, varname)
 	ZEND_ARG_INFO(0, local_only)
 ZEND_END_ARG_INFO()
@@ -1386,7 +1386,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_vfprintf, 0)
 ZEND_END_ARG_INFO()
 /* }}} */
 /* {{{ fsock.c */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_fsockopen, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_fsockopen, 0, 0, 1)
 	ZEND_ARG_INFO(0, hostname)
 	ZEND_ARG_INFO(0, port)
 	ZEND_ARG_INFO(1, errno)
@@ -1394,7 +1394,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_fsockopen, 0, 0, 2)
 	ZEND_ARG_INFO(0, timeout)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_pfsockopen, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_pfsockopen, 0, 0, 1)
 	ZEND_ARG_INFO(0, hostname)
 	ZEND_ARG_INFO(0, port)
 	ZEND_ARG_INFO(1, errno)
@@ -1451,6 +1451,11 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_http_response_code, 0, 0, 0)
 	ZEND_ARG_INFO(0, response_code)
+ZEND_END_ARG_INFO()
+/* }}} */
+/* {{{ hrtime.c */
+ZEND_BEGIN_ARG_INFO(arginfo_hrtime, 0)
+	ZEND_ARG_INFO(0, get_as_number)
 ZEND_END_ARG_INFO()
 /* }}} */
 /* {{{ html.c */
@@ -2201,7 +2206,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_implode, 0)
 	ZEND_ARG_INFO(0, pieces)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_strtok, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_strtok, 0, 0, 1)
 	ZEND_ARG_INFO(0, str)
 	ZEND_ARG_INFO(0, token)
 ZEND_END_ARG_INFO()
@@ -2467,7 +2472,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_str_split, 0, 0, 1)
 	ZEND_ARG_INFO(0, split_length)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_strpbrk, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_strpbrk, 0, 0, 2)
 	ZEND_ARG_INFO(0, haystack)
 	ZEND_ARG_INFO(0, char_list)
 ZEND_END_ARG_INFO()
@@ -2579,6 +2584,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_is_callable, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_is_iterable, 0, 0, 1)
+	ZEND_ARG_INFO(0, var)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO(arginfo_is_countable, 0)
 	ZEND_ARG_INFO(0, var)
 ZEND_END_ARG_INFO()
 /* }}} */
@@ -2986,6 +2995,8 @@ static const zend_function_entry basic_functions[] = { /* {{{ */
 	PHP_FE(getrusage,														arginfo_getrusage)
 #endif
 
+	PHP_FE(hrtime,															arginfo_hrtime)
+
 #ifdef HAVE_GETTIMEOFDAY
 	PHP_FE(uniqid,															arginfo_uniqid)
 #endif
@@ -3104,6 +3115,7 @@ static const zend_function_entry basic_functions[] = { /* {{{ */
 	PHP_FE(is_scalar,														arginfo_is_scalar)
 	PHP_FE(is_callable,														arginfo_is_callable)
 	PHP_FE(is_iterable,														arginfo_is_iterable)
+	PHP_FE(is_countable,													arginfo_is_countable)
 
 	/* functions from file.c */
 	PHP_FE(pclose,															arginfo_pclose)
@@ -3681,6 +3693,14 @@ PHP_MINIT_FUNCTION(basic) /* {{{ */
 	BASIC_MINIT_SUBMODULE(nl_langinfo)
 #endif
 
+#if ZEND_INTRIN_SSE4_2_FUNC_PTR
+	BASIC_MINIT_SUBMODULE(string_intrin)
+#endif
+
+#if ZEND_INTRIN_AVX2_FUNC_PTR || ZEND_INTRIN_SSSE3_FUNC_PTR
+	BASIC_MINIT_SUBMODULE(base64_intrin)
+#endif
+
 	BASIC_MINIT_SUBMODULE(crypt)
 	BASIC_MINIT_SUBMODULE(lcg)
 
@@ -3715,6 +3735,8 @@ PHP_MINIT_FUNCTION(basic) /* {{{ */
 #endif
 
 	BASIC_MINIT_SUBMODULE(random)
+
+	BASIC_MINIT_SUBMODULE(hrtime)
 
 	return SUCCESS;
 }
@@ -4048,7 +4070,7 @@ PHP_FUNCTION(long2ip)
  ********************/
 
 /* {{{ proto string getenv(string varname[, bool local_only]
-   Get the value of an environment variable or every available environment variable 
+   Get the value of an environment variable or every available environment variable
    if no varname is present  */
 PHP_FUNCTION(getenv)
 {
@@ -4166,10 +4188,10 @@ PHP_FUNCTION(putenv)
 #endif
 	}
 
-	pe.key_len = (int)strlen(pe.key);
+	pe.key_len = strlen(pe.key);
 #ifdef PHP_WIN32
 	if (equals) {
-		if ((size_t)pe.key_len < setting_len - 1) {
+		if (pe.key_len < setting_len - 1) {
 			value = p + 1;
 		} else {
 			/* empty string*/
@@ -4336,13 +4358,13 @@ PHP_FUNCTION(getopt)
 	char *options = NULL, **argv = NULL;
 	char opt[2] = { '\0' };
 	char *optname;
-	int argc = 0, len, o;
-	size_t options_len = 0;
+	int argc = 0, o;
+	size_t options_len = 0, len;
 	char *php_optarg = NULL;
 	int php_optind = 1;
 	zval val, *args = NULL, *p_longopts = NULL;
 	zval *zoptind = NULL;
-	int optname_len = 0;
+	size_t optname_len = 0;
 	opt_struct *opts, *orig_opts;
 
 	ZEND_PARSE_PARAMETERS_START(1, 3)
@@ -4418,7 +4440,7 @@ PHP_FUNCTION(getopt)
 
 			opts->need_param = 0;
 			opts->opt_name = estrdup(ZSTR_VAL(arg_str));
-			len = (int)strlen(opts->opt_name);
+			len = strlen(opts->opt_name);
 			if ((len > 0) && (opts->opt_name[len - 1] == ':')) {
 				opts->need_param++;
 				opts->opt_name[len - 1] = '\0';
@@ -4474,7 +4496,7 @@ PHP_FUNCTION(getopt)
 		}
 
 		/* Add this option / argument pair to the result hash. */
-		optname_len = (int)strlen(optname);
+		optname_len = strlen(optname);
 		if (!(optname_len > 1 && optname[0] == '0') && is_numeric_string(optname, optname_len, NULL, NULL, 0) == IS_LONG) {
 			/* numeric string */
 			int optname_int = atoi(optname);
@@ -4568,7 +4590,7 @@ PHP_FUNCTION(usleep)
 /* }}} */
 
 #if HAVE_NANOSLEEP
-/* {{{ proto mixed time_nanosleep(long seconds, long nanoseconds)
+/* {{{ proto mixed time_nanosleep(int seconds, int nanoseconds)
    Delay for a number of seconds and nano seconds */
 PHP_FUNCTION(time_nanosleep)
 {
@@ -4906,7 +4928,7 @@ PHP_FUNCTION(call_user_func_array)
 
 	ZEND_PARSE_PARAMETERS_START(2, 2)
 		Z_PARAM_FUNC(fci, fci_cache)
-		Z_PARAM_ARRAY_EX(params, 0, 1)
+		Z_PARAM_ARRAY(params)
 	ZEND_PARSE_PARAMETERS_END();
 
 	zend_fcall_info_args(&fci, params);
@@ -4970,7 +4992,7 @@ PHP_FUNCTION(forward_static_call_array)
 
 	ZEND_PARSE_PARAMETERS_START(2, 2)
 		Z_PARAM_FUNC(fci, fci_cache)
-		Z_PARAM_ARRAY_EX(params, 0, 1)
+		Z_PARAM_ARRAY(params)
 	ZEND_PARSE_PARAMETERS_END();
 
 	zend_fcall_info_args(&fci, params);

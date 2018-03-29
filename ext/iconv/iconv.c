@@ -424,7 +424,7 @@ static int php_iconv_output_handler(void **nothing, php_output_context *output_c
 			} else {
 				len = spprintf(&content_type, 0, "Content-Type:%.*s; charset=%s", mimetype_len ? mimetype_len : (int) strlen(mimetype), mimetype, get_output_encoding());
 			}
-			if (content_type && SUCCESS == sapi_add_header(content_type, (uint32_t)len, 0)) {
+			if (content_type && SUCCESS == sapi_add_header(content_type, len, 0)) {
 				SG(sapi_headers).send_default_content_type = 0;
 				php_output_handler_hook(PHP_OUTPUT_HANDLER_HOOK_IMMUTABLE, NULL);
 			}
@@ -558,6 +558,8 @@ PHP_ICONV_API php_iconv_err_t php_iconv_string(const char *in_p, size_t in_len, 
 	iconv_t cd;
 	size_t result;
 	zend_string *ret, *out_buffer;
+
+	*out = NULL;
 
 	/*
 	  This is not the right way to get output size...

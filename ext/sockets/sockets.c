@@ -796,7 +796,7 @@ static PHP_MINIT_FUNCTION(sockets)
 	REGISTER_LONG_CONSTANT("AI_ALL",			AI_ALL,				CONST_CS | CONST_PERSISTENT);
 #endif
 	REGISTER_LONG_CONSTANT("AI_ADDRCONFIG",		AI_ADDRCONFIG,		CONST_CS | CONST_PERSISTENT);
-#ifdef __USE_GNU
+#if HAVE_AI_IDN
 	REGISTER_LONG_CONSTANT("AI_IDN",			AI_IDN,				CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("AI_CANONIDN",		AI_CANONIDN,		CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("AI_IDN_ALLOW_UNASSIGNED",		AI_IDN_ALLOW_UNASSIGNED, CONST_CS | CONST_PERSISTENT);
@@ -919,7 +919,7 @@ PHP_FUNCTION(socket_select)
 	int				retval, sets = 0;
 	zend_long			usec = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "a/!a/!a/!z!|l", &r_array, &w_array, &e_array, &sec, &usec) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "a!a!a!z!|l", &r_array, &w_array, &e_array, &sec, &usec) == FAILURE) {
 		return;
 	}
 
@@ -1670,7 +1670,7 @@ PHP_FUNCTION(socket_recv)
 	recv_buf = zend_string_alloc(len, 0);
 
 	if ((retval = recv(php_sock->bsd_socket, ZSTR_VAL(recv_buf), len, flags)) < 1) {
-		efree(recv_buf);
+		zend_string_free(recv_buf);
 
 		zval_dtor(buf);
 		ZVAL_NULL(buf);
@@ -1812,7 +1812,7 @@ PHP_FUNCTION(socket_recvfrom)
 			sin6.sin6_family = AF_INET6;
 
 			if (arg6 == NULL) {
-				efree(recv_buf);
+				zend_string_free(recv_buf);
 				WRONG_PARAM_COUNT;
 			}
 
@@ -2520,7 +2520,7 @@ PHP_FUNCTION(socket_addrinfo_lookup)
 
 	memset(&hints, 0, sizeof(hints));
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "S|sa", &hostname, &service, &service_len, &zhints) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|sa", &hostname, &service, &service_len, &zhints) == FAILURE) {
 		RETURN_NULL();
 	}
 

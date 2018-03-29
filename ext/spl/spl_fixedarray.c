@@ -346,7 +346,7 @@ static zval *spl_fixedarray_object_read_dimension(zval *object, zval *offset, in
 
 	if (type == BP_VAR_IS && intern->fptr_offset_has) {
 		SEPARATE_ARG_IF_REF(offset);
-		zend_call_method_with_1_params(object, intern->std.ce, &intern->fptr_offset_has, "offsetexists", rv, offset); 
+		zend_call_method_with_1_params(object, intern->std.ce, &intern->fptr_offset_has, "offsetexists", rv, offset);
 		if (UNEXPECTED(Z_ISUNDEF_P(rv))) {
 			zval_ptr_dtor(offset);
 			return NULL;
@@ -546,7 +546,7 @@ static int spl_fixedarray_object_count_elements(zval *object, zend_long *count) 
 }
 /* }}} */
 
-/* {{{ proto void SplFixedArray::__construct([int size])
+/* {{{ proto SplFixedArray::__construct([int size])
 */
 SPL_METHOD(SplFixedArray, __construct)
 {
@@ -574,7 +574,7 @@ SPL_METHOD(SplFixedArray, __construct)
 }
 /* }}} */
 
-/* {{{ proto void SplFixedArray::__wakeup()
+/* {{{ proto SplFixedArray::__wakeup()
 */
 SPL_METHOD(SplFixedArray, __wakeup)
 {

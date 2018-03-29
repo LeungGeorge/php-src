@@ -69,7 +69,7 @@ ZEND_KNOWN_STRINGS(_ZEND_STR_DSC)
 static void zend_init_interned_strings_ht(HashTable *interned_strings, int permanent)
 {
 	zend_hash_init(interned_strings, 1024, NULL, _str_dtor, permanent);
-	zend_hash_real_init(interned_strings, 0);
+	zend_hash_real_init_mixed(interned_strings);
 }
 
 ZEND_API void zend_interned_strings_init(void)
@@ -77,6 +77,14 @@ ZEND_API void zend_interned_strings_init(void)
 	char s[2];
 	int i;
 	zend_string *str;
+
+	interned_string_request_handler = zend_new_interned_string_request;
+	interned_string_init_request_handler = zend_string_init_interned_request;
+	interned_string_copy_storage = NULL;
+	interned_string_restore_storage = NULL;
+
+	zend_empty_string = NULL;
+	zend_known_strings = NULL;
 
 	zend_init_interned_strings_ht(&interned_strings_permanent, 1);
 
@@ -158,7 +166,7 @@ static zend_always_inline zend_string *zend_add_interned_string(zend_string *str
 	zval val;
 
 	GC_SET_REFCOUNT(str, 1);
-	GC_FLAGS(str) |= IS_STR_INTERNED | flags;
+	GC_ADD_FLAGS(str, IS_STR_INTERNED | flags);
 
 	ZVAL_INTERNED_STR(&val, str);
 
@@ -338,7 +346,7 @@ ZEND_API zend_bool ZEND_FASTCALL zend_string_equal_val(zend_string *s1, zend_str
 		"jmp .LL3%=\n\t"
 		".LL2%=:\n\t"
 		"negl %1\n\t"
-		"lea 0x1c(,%1,8), %1\n\t"
+		"lea 0x20(,%1,8), %1\n\t"
 		"shll %b1, %0\n\t"
 		"sete %b0\n\t"
 		"movzbl %b0, %0\n\t"
@@ -406,7 +414,7 @@ ZEND_API zend_bool ZEND_FASTCALL zend_string_equal_val(zend_string *s1, zend_str
 		"jmp .LL3%=\n\t"
 		".LL2%=:\n\t"
 		"negq %1\n\t"
-		"lea 0x3c(,%1,8), %1\n\t"
+		"lea 0x40(,%1,8), %1\n\t"
 		"shlq %b1, %0\n\t"
 		"sete %b0\n\t"
 		"movzbq %b0, %0\n\t"

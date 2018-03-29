@@ -1304,7 +1304,7 @@ static PHP_METHOD(PDOStatement, fetchObject)
 
 	if (ctor_args) {
 		if (Z_TYPE_P(ctor_args) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(ctor_args))) {
-			ZVAL_DUP(&stmt->fetch.cls.ctor_args, ctor_args);
+			ZVAL_ARR(&stmt->fetch.cls.ctor_args, zend_array_dup(Z_ARRVAL_P(ctor_args)));
 		} else {
 			ZVAL_UNDEF(&stmt->fetch.cls.ctor_args);
 		}
@@ -1941,7 +1941,7 @@ int pdo_stmt_setup_fetch_mode(INTERNAL_FUNCTION_PARAMETERS, pdo_stmt_t *stmt, in
 						pdo_raise_impl_error(stmt->dbh, stmt, "HY000", "ctor_args must be either NULL or an array");
 						retval = FAILURE;
 					} else if (Z_TYPE(args[skip+2]) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL(args[skip+2]))) {
-						ZVAL_DUP(&stmt->fetch.cls.ctor_args, &args[skip+2]);
+						ZVAL_ARR(&stmt->fetch.cls.ctor_args, zend_array_dup(Z_ARRVAL(args[skip+2])));
 					}
 				}
 
@@ -2148,7 +2148,7 @@ static PHP_METHOD(PDOStatement, debugDumpParams)
 }
 /* }}} */
 
-/* {{{ proto int PDOStatement::__wakeup()
+/* {{{ proto PDOStatement::__wakeup()
    Prevents use of a PDOStatement instance that has been unserialized */
 static PHP_METHOD(PDOStatement, __wakeup)
 {
@@ -2469,7 +2469,8 @@ zend_object_iterator *pdo_stmt_iter_get(zend_class_entry *ce, zval *object, int 
 	struct php_pdo_iterator *I;
 
 	if (by_ref) {
-		zend_error(E_ERROR, "An iterator cannot be used with foreach by reference");
+		zend_throw_error(NULL, "An iterator cannot be used with foreach by reference");
+		return NULL;
 	}
 
 	I = ecalloc(1, sizeof(struct php_pdo_iterator));
@@ -2667,7 +2668,7 @@ static int row_compare(zval *object1, zval *object2)
 	return -1;
 }
 
-zend_object_handlers pdo_row_object_handlers = {
+const zend_object_handlers pdo_row_object_handlers = {
 	0,
 	zend_objects_destroy_object,
 	pdo_row_free_storage,

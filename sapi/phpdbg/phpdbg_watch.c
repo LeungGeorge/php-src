@@ -29,7 +29,7 @@
  * WATCH_ON_HASHDATA: special watchpoint to watch for HT_GET_DATA_ADDR(ht) being efree()'d to be able to properly relocate Bucket watches
  *
  * Watch elements are either simple, recursive or implicit (PHPDBG_WATCH_* flags)
- * Simple means that a particular watchpoint was explicitely defined
+ * Simple means that a particular watchpoint was explicitly defined
  * Recursive watch elements are created recursively (recursive root flag is to distinguish the root element easily from its children recursive elements)
  * Implicit  watch elements are implicitely created on all ancestors of simple or recursive watch elements
  * Recursive and (simple or implicit) watch elements are mutually exclusive
@@ -429,7 +429,7 @@ void phpdbg_update_watch_ref(phpdbg_watchpoint_t *watch) {
 			phpdbg_store_watchpoint_btree(&coll->ref);
 			phpdbg_activate_watchpoint(&coll->ref);
 			phpdbg_watch_backup_data(&coll->ref);
-			
+
 			zend_hash_init(&coll->parents, 8, shitty stupid parameter, NULL, 0);
 			zend_hash_index_add_ptr(&PHPDBG_G(watch_collisions), (zend_ulong) watch->ref, coll);
 		}

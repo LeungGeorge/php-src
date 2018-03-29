@@ -108,6 +108,9 @@ zend_accel_shared_globals *accel_shared_globals = NULL;
 zend_bool accel_startup_ok = 0;
 static char *zps_failure_reason = NULL;
 char *zps_api_failure_reason = NULL;
+#ifdef HAVE_OPCACHE_FILE_CACHE
+zend_bool file_cache_only = 0;  /* process uses file cache only */
+#endif
 #if ENABLE_FILE_CACHE_FALLBACK
 zend_bool fallback_process = 0; /* process uses file cache fallback */
 #endif
@@ -441,7 +444,7 @@ zend_string *accel_new_interned_string(zend_string *str)
 	zend_string *s;
 
 #ifdef HAVE_OPCACHE_FILE_CACHE
-	if (UNEXPECTED(ZCG(accel_directives).file_cache_only)) {
+	if (UNEXPECTED(file_cache_only)) {
 		return str;
 	}
 #endif
@@ -480,13 +483,7 @@ zend_string *accel_new_interned_string(zend_string *str)
 	STRTAB_COLLISION(s) = *hash_slot;
 	*hash_slot = STRTAB_STR_TO_POS(&ZCSG(interned_strings), s);
 	GC_SET_REFCOUNT(s, 1);
-#if 1
-	/* optimized single assignment */
 	GC_TYPE_INFO(s) = IS_STRING | ((IS_STR_INTERNED | IS_STR_PERMANENT) << GC_FLAGS_SHIFT);
-#else
-	GC_TYPE(s) = IS_STRING;
-	GC_FLAGS(s) = IS_STR_INTERNED | IS_STR_PERMANENT;
-#endif
 	ZSTR_H(s) = h;
 	ZSTR_LEN(s) = ZSTR_LEN(str);
 	memcpy(ZSTR_VAL(s), ZSTR_VAL(str), ZSTR_LEN(s) + 1);
@@ -1358,7 +1355,7 @@ static zend_persistent_script *store_script_in_file_cache(zend_persistent_script
 	memory_used = zend_accel_script_persist_calc(new_persistent_script, NULL, 0, 0);
 
 	/* Allocate memory block */
-#ifdef __SSE2__
+#if defined(__AVX__) || defined(__SSE2__)
 	/* Align to 64-byte boundary */
 	ZCG(mem) = zend_arena_alloc(&CG(arena), memory_used + 64);
 	ZCG(mem) = (void*)(((zend_uintptr_t)ZCG(mem) + 63L) & ~63L);
@@ -1366,8 +1363,8 @@ static zend_persistent_script *store_script_in_file_cache(zend_persistent_script
 	ZCG(mem) = zend_arena_alloc(&CG(arena), memory_used);
 #endif
 
-	/* Copy into shared memory */
-	new_persistent_script = zend_accel_script_persist(new_persistent_script, NULL, 0);
+	/* Copy into memory block */
+	new_persistent_script = zend_accel_script_persist(new_persistent_script, NULL, 0, 0);
 
 	zend_shared_alloc_destroy_xlat_table();
 
@@ -1465,7 +1462,7 @@ static zend_persistent_script *cache_script_in_shared_memory(zend_persistent_scr
 	memory_used = zend_accel_script_persist_calc(new_persistent_script, key, key_length, 1);
 
 	/* Allocate shared memory */
-#ifdef __SSE2__
+#if defined(__AVX__) || defined(__SSE2__)
 	/* Align to 64-byte boundary */
 	ZCG(mem) = zend_shared_alloc(memory_used + 64);
 	if (ZCG(mem)) {
@@ -1492,7 +1489,7 @@ static zend_persistent_script *cache_script_in_shared_memory(zend_persistent_scr
 	}
 
 	/* Copy into shared memory */
-	new_persistent_script = zend_accel_script_persist(new_persistent_script, &key, key_length);
+	new_persistent_script = zend_accel_script_persist(new_persistent_script, &key, key_length, 1);
 
 	zend_shared_alloc_destroy_xlat_table();
 
@@ -1723,6 +1720,10 @@ static zend_persistent_script *opcache_compile_file(zend_file_handle *file_handl
 	   further anyway.
 	*/
 	zend_accel_move_user_functions(&ZCG(function_table), &new_persistent_script->script.function_table);
+	new_persistent_script->script.first_early_binding_opline =
+		(op_array->fn_flags & ZEND_ACC_EARLY_BINDING) ?
+			zend_build_delayed_early_binding_list(op_array) :
+			(uint32_t)-1;
 	new_persistent_script->script.main_op_array = *op_array;
 
 	efree(op_array); /* we have valid persistent_script, so it's safe to free op_array */
@@ -1840,7 +1841,7 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
 		/* The Accelerator is disabled, act as if without the Accelerator */
 		return accelerator_orig_compile_file(file_handle, type);
 #ifdef HAVE_OPCACHE_FILE_CACHE
-	} else if (ZCG(accel_directives).file_cache_only) {
+	} else if (file_cache_only) {
 		return file_cache_compile_file(file_handle, type);
 #endif
 	} else if ((!ZCG(counted) && !ZCSG(accelerator_enabled)) ||
@@ -2139,6 +2140,9 @@ static int persistent_stream_open_function(const char *filename, zend_file_handl
 static zend_string* persistent_zend_resolve_path(const char *filename, size_t filename_len)
 {
 	if (ZCG(enabled) && accel_startup_ok &&
+#ifdef HAVE_OPCACHE_FILE_CACHE
+		!file_cache_only &&
+#endif
 	    (ZCG(counted) || ZCSG(accelerator_enabled)) &&
 	    !ZCSG(restart_in_progress)) {
 
@@ -2270,7 +2274,7 @@ static void accel_activate(void)
 	ZCG(cwd_check) = 1;
 
 #ifdef HAVE_OPCACHE_FILE_CACHE
-	if (ZCG(accel_directives).file_cache_only) {
+	if (file_cache_only) {
 		return;
 	}
 #endif
@@ -2462,6 +2466,8 @@ static inline int accel_find_sapi(void)
 
 static int zend_accel_init_shm(void)
 {
+	int i;
+
 	zend_shared_alloc_lock();
 
 	if (ZCG(accel_directives).interned_strings_buffer) {
@@ -2524,6 +2530,11 @@ static int zend_accel_init_shm(void)
 	ZCSG(start_time) = zend_accel_get_time();
 	ZCSG(last_restart_time) = 0;
 	ZCSG(restart_in_progress) = 0;
+
+
+	for (i = 0; i < -HT_MIN_MASK; i++) {
+		ZCSG(uninitialized_bucket)[i] = HT_INVALID_IDX;
+	}
 
 	zend_shared_alloc_unlock();
 
@@ -2694,7 +2705,9 @@ static int accel_startup(zend_extension *extension)
 #endif
 
 #ifdef ZEND_WIN32
+# if !defined(__has_feature) || !__has_feature(address_sanitizer)
 	_setmaxstdio(2048); /* The default configuration is limited to 512 stdio files */
+# endif
 #endif
 
 	if (start_accel_module() == FAILURE) {
@@ -2755,7 +2768,8 @@ static int accel_post_startup(void)
 /* End of non-SHM dependent initializations */
 /********************************************/
 #ifdef HAVE_OPCACHE_FILE_CACHE
-	if (!ZCG(accel_directives).file_cache_only) {
+	file_cache_only = ZCG(accel_directives).file_cache_only;
+	if (!file_cache_only) {
 #else
 	if (1) {
 #endif
@@ -2787,6 +2801,7 @@ static int accel_post_startup(void)
 #if ENABLE_FILE_CACHE_FALLBACK
 			case ALLOC_FALLBACK:
 				zend_shared_alloc_lock();
+				file_cache_only = 1;
 				fallback_process = 1;
 				zend_accel_init_auto_globals();
 				zend_shared_alloc_unlock();
@@ -2797,7 +2812,7 @@ static int accel_post_startup(void)
 
 		/* from this point further, shared memory is supposed to be OK */
 
-		/* remeber the last restart time in the process memory */
+		/* remember the last restart time in the process memory */
 		ZCG(last_restart_time) = ZCSG(last_restart_time);
 
 		/* Init auto-global strings */
@@ -2885,7 +2900,7 @@ static void accel_free_ts_resources()
 void accel_shutdown(void)
 {
 	zend_ini_entry *ini_entry;
-	zend_bool file_cache_only = 0;
+	zend_bool _file_cache_only = 0;
 
 	zend_optimizer_shutdown();
 
@@ -2897,14 +2912,14 @@ void accel_shutdown(void)
 	}
 
 #ifdef HAVE_OPCACHE_FILE_CACHE
-	file_cache_only = ZCG(accel_directives).file_cache_only;
+	_file_cache_only = file_cache_only;
 #endif
 
 	accel_reset_pcre_cache();
 
 	accel_free_ts_resources();
 
-	if (!file_cache_only) {
+	if (!_file_cache_only) {
 		zend_shared_alloc_shutdown();
 	}
 	zend_compile_file = accelerator_orig_compile_file;
@@ -2993,7 +3008,7 @@ ZEND_EXT_API zend_extension zend_extension_entry = {
 	PHP_VERSION,							/* version */
 	"Zend Technologies",					/* author */
 	"http://www.zend.com/",					/* URL */
-	"Copyright (c) 1999-2017",				/* copyright */
+	"Copyright (c) 1999-2018",				/* copyright */
 	accel_startup,					   		/* startup */
 	NULL,									/* shutdown */
 	accel_activate,							/* per-script activation */
